@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>ZBOM · Контроль CRM</title>
+<style>
+  :root{
+    --marsala:#6e1a2e; --marsala-deep:#54121f; --graphite:#33333a;
+    --paper:#f5f3f0; --card:#ffffff; --line:#e7e3de;
+    --red:#c0392b; --amber:#d98324; --green:#4a8a5c; --muted:#8a857e;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+  body{font-family:-apple-system,"Segoe UI",Roboto,sans-serif;background:var(--paper);
+       color:var(--graphite);max-width:680px;margin:0 auto;padding-bottom:48px}
+
+  header{background:linear-gradient(160deg,var(--marsala),var(--marsala-deep));
+         color:#fff;padding:20px 18px 16px;position:sticky;top:0;z-index:20}
+  header h1{font-size:17px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase}
+  header h1 span{opacity:.6;font-weight:400}
+  .upd{font-size:12px;opacity:.75;margin-top:4px}
+
+  /* setup / ключ */
+  .setup{padding:20px 18px;background:var(--card);border-bottom:1px solid var(--line)}
+  .setup p{font-size:13px;color:var(--muted);margin-bottom:10px;line-height:1.5}
+  .setup input{width:100%;padding:12px 14px;border:1px solid var(--line);border-radius:10px;
+               font-size:14px;margin-bottom:10px;font-family:inherit}
+  .btn{width:100%;border:none;background:var(--marsala);color:#fff;padding:13px;
+       border-radius:10px;font-size:15px;font-weight:600;cursor:pointer}
+  .btn:active{background:var(--marsala-deep)}
+  .btn.ghost{background:transparent;color:var(--marsala);border:1px solid var(--marsala);margin-top:8px}
+
+  .risk{margin:14px 18px 0;background:var(--card);border:1px solid var(--line);
+        border-left:4px solid var(--marsala);border-radius:12px;padding:14px 16px}
+  .risk .lbl{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px}
+  .risk .val{font-size:26px;font-weight:800;color:var(--marsala);margin-top:2px}
+
+  .tabs{display:flex;gap:6px;padding:12px;overflow-x:auto;position:sticky;top:64px;
+        background:var(--paper);z-index:15}
+  .tab{flex:0 0 auto;border:1px solid var(--line);background:var(--card);color:var(--graphite);
+       padding:9px 14px;border-radius:22px;font-size:13px;font-weight:600;cursor:pointer;
+       display:flex;align-items:center;gap:7px}
+  .tab.on{background:var(--marsala);color:#fff;border-color:var(--marsala)}
+  .tab b{background:rgba(0,0,0,.12);border-radius:11px;padding:1px 8px;font-size:11px}
+  .tab.on b{background:rgba(255,255,255,.25)}
+
+  .body{padding:0 12px;display:none}
+  .body.on{display:block}
+  .sum{display:flex;gap:8px;margin:4px 0 14px}
+  .st{flex:1;background:var(--card);border:1px solid var(--line);border-radius:12px;
+      padding:12px 8px;text-align:center}
+  .st b{display:block;font-size:23px;line-height:1}
+  .st span{font-size:11px;color:var(--muted)}
+  .st.r b{color:var(--red)} .st.a b{color:var(--amber)} .st.t b{color:var(--marsala)}
+
+  .card{background:var(--card);border:1px solid var(--line);border-left:4px solid var(--line);
+        border-radius:12px;padding:13px 15px;margin-bottom:10px}
+  .card.red{border-left-color:var(--red)}
+  .card.amber{border-left-color:var(--amber)}
+  .top{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:5px}
+  .days{font-size:13px;font-weight:800}
+  .card.red .days{color:var(--red)} .card.amber .days{color:var(--amber)}
+  .num{font-size:11px;color:var(--muted)}
+  .title{font-size:15px;font-weight:600;margin-bottom:7px;line-height:1.3}
+  .meta{display:flex;flex-wrap:wrap;gap:8px 14px;font-size:12px;color:var(--muted)}
+  .amt{font-weight:700;color:var(--marsala)}
+  .empty{text-align:center;padding:40px 10px;color:var(--muted);font-size:15px}
+  .loading{text-align:center;padding:36px;color:var(--muted)}
+  .spin{width:26px;height:26px;border:3px solid var(--line);border-top-color:var(--marsala);
+        border-radius:50%;animation:sp 1s linear infinite;margin:0 auto 12px}
+  @keyframes sp{to{transform:rotate(360deg)}}
+  .err{margin:14px 18px;padding:14px;background:#fff3f1;border:1px solid #f0c9c3;
+       border-radius:10px;color:var(--red);font-size:13px;line-height:1.5}
+  footer{text-align:center;font-size:11px;color:var(--muted);padding:22px}
+  .reset{color:var(--muted);font-size:12px;text-decoration:underline;cursor:pointer}
+</style>
+</head>
+<body>
+<header>
+  <h1>ZBOM <span>· контроль CRM</span></h1>
+  <div class="upd" id="upd">не обновлялось</div>
+</header>
+
+<div id="setup" class="setup">
+  <p>Вставьте ссылку-ключ (вебхук) из Битрикса. Она сохранится только в этом браузере
+     и никуда не отправляется, кроме вашего портала.</p>
+  <input id="hook" placeholder="https://ваш-портал.bitrix24.ru/rest/16/КЛЮЧ/" autocomplete="off">
+  <button class="btn" onclick="saveHook()">Сохранить и обновить</button>
+</div>
+
+<div id="app" style="display:none">
+  <div class="risk">
+    <div class="lbl">Под угрозой · продажи в тишине 10+ дней</div>
+    <div class="val" id="risk">—</div>
+  </div>
+  <div class="tabs" id="tabs"></div>
+  <div id="bodies"></div>
+  <button class="btn ghost" style="margin:0 18px;width:calc(100% - 36px)" onclick="run()">Обновить данные</button>
+  <footer>Данные обезличены · <span class="reset" onclick="resetHook()">сменить ключ</span></footer>
+</div>
+
+<div id="err" class="err" style="display:none"></div>
+
+<script>
+/* ---------- Конфиг воронок и порогов ---------- */
+const RATE = 80;
+const PIPES = [
+  {key:"sale",  title:"Продажи мебель", cat:0,  yellow:5,  red:10},
+  {key:"defer", title:"Отложенный спрос", cat:14, yellow:45, red:90},
+  {key:"leads", title:"Лиды", entity:"lead", yellow:2, red:3},
+];
+const TODAY = new Date();
+
+/* ---------- Ключ ---------- */
+function getHook(){ try{return localStorage.getItem("zbom_hook")||""}catch(e){return window._hook||""} }
+function setHook(v){ try{localStorage.setItem("zbom_hook",v)}catch(e){window._hook=v} }
+function saveHook(){
+  let v=document.getElementById("hook").value.trim();
+  if(!v){return}
+  v=cleanHook(v);
+  setHook(v); document.getElementById("setup").style.display="none";
+  document.getElementById("app").style.display="block"; run();
+}
+/* Аккуратная нормализация: оставляем только https://портал/rest/ID/КЛЮЧ/ */
+function cleanHook(v){
+  v=v.trim();
+  // если пользователь вставил ссылку с методом на конце (profile, crm.deal.list?... и т.п.) —
+  // отрезаем всё ПОСЛЕ ключа, но сам ключ (сегмент после /rest/NN/) сохраняем целиком
+  const m=v.match(/^(https?:\/\/[^\/]+\/rest\/\d+\/[^\/?#]+)\/?/i);
+  if(m){ return m[1]+"/"; }
+  // если формат нестандартный — просто гарантируем завершающий слэш и не режем ничего
+  return v.endsWith("/")?v:v+"/";
+}
+function resetHook(){ setHook(""); location.reload(); }
+
+/* ---------- Запрос к Битриксу ---------- */
+let LAST_URL="";
+function mask(u){ return u.replace(/(\/rest\/\d+\/)[^\/]+(\/)/,"$1•••$2"); }
+async function call(method,params){
+  const url=getHook()+method+(params?("?"+params):"");
+  LAST_URL=url;
+  const r=await fetch(url);
+  if(!r.ok)throw new Error("HTTP "+r.status);
+  const j=await r.json();
+  if(j.error){ throw new Error(j.error+": "+(j.error_description||"")); }
+  return j;
+}
+async function listAll(method,filterParams){
+  let out=[],start=0;
+  while(true){
+    const d=await call(method,filterParams+"&start="+start);
+    if(!d.result)break;
+    out=out.concat(d.result);
+    if(d.next===undefined||d.next===null)break;
+    start=d.next;
+    if(start>5000)break;
+  }
+  return out;
+}
+
+/* ---------- Утилиты ---------- */
+function daysSince(s){
+  if(!s)return null;
+  const d=new Date(s.replace(" ","T"));
+  return Math.floor((TODAY-d)/86400000);
+}
+function money(v){
+  v=parseFloat(v)||0;
+  if(v<=0)return "—";
+  return v.toLocaleString("ru-RU")+" ₽";
+}
+let USERS={};
+
+/* ---------- Основной прогон ---------- */
+async function run(){
+  document.getElementById("err").style.display="none";
+  document.getElementById("bodies").innerHTML='<div class="loading"><div class="spin"></div>Загружаю сделки…</div>';
+  document.getElementById("tabs").innerHTML="";
+  try{
+    // менеджеры
+    const us=await listAll("user.get","");
+    USERS={}; us.forEach(u=>USERS[u.ID]=[u.NAME,u.LAST_NAME].filter(Boolean).join(" ")||("ID "+u.ID));
+
+    const data={};
+    let riskSum=0;
+    for(const p of PIPES){
+      let rows=[];
+      if(p.entity==="lead"){
+        const leads=await listAll("crm.lead.list","filter[STATUS_SEMANTIC_ID]=P&select[]=ID&select[]=TITLE&select[]=STATUS_ID&select[]=OPPORTUNITY&select[]=ASSIGNED_BY_ID&select[]=DATE_CREATE");
+        rows=leads.map(l=>mk(l.ID,l.TITLE,l.OPPORTUNITY,l.ASSIGNED_BY_ID,l.DATE_CREATE,p));
+      }else{
+        const deals=await listAll("crm.deal.list",
+          "filter[CATEGORY_ID]="+p.cat+"&filter[STAGE_SEMANTIC_ID]=P"+
+          "&select[]=ID&select[]=TITLE&select[]=OPPORTUNITY&select[]=ASSIGNED_BY_ID&select[]=LAST_ACTIVITY_TIME&select[]=DATE_CREATE");
+        rows=deals.map(d=>mk(d.ID,d.TITLE,d.OPPORTUNITY,d.ASSIGNED_BY_ID,d.LAST_ACTIVITY_TIME||d.DATE_CREATE,p));
+      }
+      rows.sort((a,b)=>({red:0,amber:1,green:2})[a.lvl]-({red:0,amber:1,green:2})[b.lvl] || b.days-a.days);
+      if(p.key==="sale") rows.forEach(r=>{ if(r.lvl==="red") riskSum+=parseFloat(r.opp)||0; });
+      data[p.key]={rows,p};
+    }
+    document.getElementById("risk").textContent=money(riskSum);
+    render(data);
+    const t=new Date();
+    document.getElementById("upd").textContent="Обновлено: "+t.toLocaleString("ru-RU");
+  }catch(e){
+    document.getElementById("bodies").innerHTML="";
+    const el=document.getElementById("err");
+    el.style.display="block";
+    el.innerHTML="Не получилось загрузить. Проверьте, что ключ верный и у него есть права CRM.<br>Техническая причина: "+e.message+
+      "<br><br><span style='color:#8a857e'>Адрес запроса: "+mask(LAST_URL)+"</span>";
+  }
+}
+
+function mk(id,title,opp,mgr,date,p){
+  const days=daysSince(date);
+  const d=(days===null)?999:days;
+  let lvl="green";
+  if(d>=p.red)lvl="red"; else if(d>=p.yellow)lvl="amber";
+  return {id,title:title||("Сделка "+id),opp:opp||0,mgr,days:d,lvl};
+}
+
+function render(data){
+  const tabs=document.getElementById("tabs");
+  const bodies=document.getElementById("bodies");
+  tabs.innerHTML=""; bodies.innerHTML="";
+  let first=true;
+  for(const key in data){
+    const {rows,p}=data[key];
+    const red=rows.filter(r=>r.lvl==="red").length;
+    const amber=rows.filter(r=>r.lvl==="amber").length;
+    const tab=document.createElement("button");
+    tab.className="tab"+(first?" on":"");
+    tab.innerHTML=p.title+' <b>'+(red+amber)+'</b>';
+    tab.onclick=()=>{
+      document.querySelectorAll(".tab").forEach(x=>x.classList.remove("on"));
+      document.querySelectorAll(".body").forEach(x=>x.classList.remove("on"));
+      tab.classList.add("on");
+      document.getElementById("b_"+key).classList.add("on");
+    };
+    tabs.appendChild(tab);
+
+    const body=document.createElement("div");
+    body.className="body"+(first?" on":"");
+    body.id="b_"+key;
+    let html='<div class="sum">'+
+      '<div class="st r"><b>'+red+'</b><span>критично</span></div>'+
+      '<div class="st a"><b>'+amber+'</b><span>внимание</span></div>'+
+      '<div class="st t"><b>'+rows.length+'</b><span>в работе</span></div></div>';
+    const problem=rows.filter(r=>r.lvl!=="green");
+    if(problem.length===0){
+      html+='<div class="empty">Проблемных карточек нет</div>';
+    }else{
+      for(const r of problem){
+        const alert=(key==="defer")?(r.days+" дн. без движения"):(r.days+" дн. без касания");
+        html+='<div class="card '+r.lvl+'">'+
+          '<div class="top"><span class="num">#'+r.id+'</span>'+
+          '<span class="days">'+alert+'</span></div>'+
+          '<div class="title">'+esc(r.title)+'</div>'+
+          '<div class="meta"><span>👤 '+esc(USERS[r.mgr]||("ID "+r.mgr))+'</span>'+
+          '<span class="amt">'+money(r.opp)+'</span></div></div>';
+      }
+    }
+    body.innerHTML=html;
+    bodies.appendChild(body);
+    first=false;
+  }
+}
+function esc(s){return String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]))}
+
+/* ---------- Старт ---------- */
+if(getHook()){
+  document.getElementById("setup").style.display="none";
+  document.getElementById("app").style.display="block";
+  run();
+}
+</script>
+</body>
+</html>

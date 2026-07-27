@@ -1,0 +1,34 @@
+name: Обновление табло ZBOM
+
+on:
+  schedule:
+    - cron: "0 5 * * *"      # каждый день в 08:00 по Москве (05:00 UTC)
+  workflow_dispatch:          # кнопка "запустить вручную"
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Забрать репозиторий
+        uses: actions/checkout@v4
+
+      - name: Установить Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Собрать табло
+        env:
+          BITRIX_HOOK: ${{ secrets.BITRIX_HOOK }}
+        run: python build.py
+
+      - name: Опубликовать обновлённый index.html
+        run: |
+          git config user.name "zbom-bot"
+          git config user.email "bot@zbom.local"
+          git add index.html
+          git commit -m "Обновление данных табло" || echo "нет изменений"
+          git push
